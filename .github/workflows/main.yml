@@ -1,0 +1,42 @@
+name: Render
+on:
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: "Preview only (first 20 seconds)?"
+        type: boolean
+        default: true
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Unpack project
+        run: |
+          unzip -o project.zip
+          mkdir -p public out
+          cp song.mp3 bg.jpg lyrics.txt public/
+      - name: Install Chrome libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+      - run: npm install
+      - name: Render
+        run: |
+          if [ "${{ inputs.preview }}" = "true" ]; then
+            npx remotion render Lyrics out/ghabooleh-preview.mp4 --codec=h264 --crf=20 --frames=0-599
+          else
+            npx remotion render Lyrics out/ghabooleh.mp4 --codec=h264 --crf=18
+            npx remotion render Vertical out/ghabooleh-vertical.mp4 --codec=h264 --crf=18
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: video-${{ github.run_number }}
+          name: Ghabooleh video ${{ github.run_number }}
+          files: out/*.mp4
